@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    actor TT as Thủ thư
+    participant F as frmLogin
+    participant S as AuthService
+    participant D as UserDAL
+    participant DB as SQL Server
+    participant L as Logger
+    TT->>F: Nhập Username, Password, nhấn Đăng nhập
+    F->>S: Login(username, password)
+    alt Thiếu thông tin
+        S->>L: LogWarning(1302 LoginFailed)
+        S-->>F: Fail("Vui lòng nhập ...")
+    else Đủ thông tin
+        S->>D: GetByUsername(username)
+        D->>DB: SELECT ... FROM Users WHERE Username=@Username
+        DB-->>D: Dòng dữ liệu / rỗng
+        D-->>S: UserDTO / null
+        alt Sai tài khoản hoặc mật khẩu (so khớp SHA-256)
+            S->>L: LogWarning(1302, Username, Attempt)
+            S-->>F: Fail("Sai tên đăng nhập hoặc mật khẩu")
+            F-->>TT: Hiển thị lỗi màu đỏ
+        else Hợp lệ
+            S->>S: AppSession.CurrentUser = user
+            S->>L: LogInformation(1301 LoginSuccess)
+            S-->>F: Ok
+            F-->>TT: Đóng form, mở frmMain
+        end
+    end

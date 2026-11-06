@@ -1,79 +1,140 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using LibraryManagement.BLL.Common;
 using LibraryManagement.BLL.Validators;
 using LibraryManagement.DAL;
+using LibraryManagement.DAL.Interfaces;
 using LibraryManagement.DTO;
 
 namespace LibraryManagement.BLL.Services
 {
     public class ReaderService
     {
-        private readonly ReaderDAL _readerDAL = new();
+        private readonly IReaderRepository _repo;
+        private readonly ILogger _logger;
         private readonly ReaderValidator _validator = new();
 
-        public List<ReaderDTO> GetAllReaders() => _readerDAL.GetAll();
+        public ReaderService() : this(new ReaderDAL()) { }
 
-        public List<ReaderDTO> SearchReaders(string keyword) => _readerDAL.Search(keyword);
+        public ReaderService(IReaderRepository repo, ILogger? logger = null)
+        {
+            _repo = repo;
+            _logger = logger ?? NullLogger.Instance;
+        }
 
-        public (bool Success, string Message, int NewId) AddReader(ReaderDTO reader)
+        public List<ReaderDTO> GetAllReaders() => _repo.Search(string.Empty);
+
+        public List<ReaderDTO> SearchReaders(string? keyword)
+        {
+            string kw = keyword?.Trim() ?? string.Empty;
+            var result = _repo.Search(kw);
+            if (kw.Length > 0)
+            {
+                _logger.LogInformation(BllLogEvents.ReaderSearched,
+                    "Tìm độc giả Keyword={Keyword} → {Count} kết quả", kw, result.Count);
+            }
+            return result;
+        }
+
+        public ReaderDTO? GetById(int readerId) => readerId > 0 ? _repo.GetById(readerId) : null;
+
+        public OperationResult AddReader(ReaderDTO reader)
         {
             if (!_validator.IsValidReaderCode(reader.ReaderCode))
-                return (false, "Mã độc giả phải từ 3 đến 20 ký tự (chữ và số)!", 0);
+                return Invalid("AddReader", "Mã độc giả gồm 3–20 ký tự chữ hoặc số, không dấu, không khoảng trắng!");
 
+            string? error = ValidateCommon(reader);
+            if (error != null) return Invalid("AddReader", error);
+
+            try
+            {
+                if (_repo.CodeExists(reader.ReaderCode, 0))
+                    return Invalid("AddReader", $"Mã độc giả \"{reader.ReaderCode.Trim().ToUpperInvariant()}\" đã tồn tại!");
+                if (_repo.EmailExists(reader.Email, 0))
+                    return Invalid("AddReader", "Email này đã được dùng cho độc giả khác!");
+
+                int id = _repo.Insert(reader);
+                _logger.LogInformation(BllLogEvents.ReaderInserted,
+                    "Thêm độc giả thành công ReaderId={ReaderId}, ReaderCode={ReaderCode}", id, reader.ReaderCode);
+                return OperationResult.Ok($"Đã thêm độc giả {reader.FullName.Trim()}.", id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(BllLogEvents.BusinessError, ex,
+                    "Thêm độc giả thất bại ReaderCode={ReaderCode}", reader.ReaderCode);
+                return OperationResult.Fail("Không thể thêm độc giả do lỗi cơ sở dữ liệu.");
+            }
+        }
+
+        public OperationResult UpdateReader(ReaderDTO reader)
+        {
+            if (reader.ReaderId <= 0) return Invalid("UpdateReader", "Vui lòng chọn độc giả cần cập nhật!");
+
+            string? error = ValidateCommon(reader);
+            if (error != null) return Invalid("UpdateReader", error);
+
+            try
+            {
+                if (_repo.EmailExists(reader.Email, reader.ReaderId))
+                    return Invalid("UpdateReader", "Email này đã được dùng cho độc giả khác!");
+
+                bool ok = _repo.Update(reader);
+                if (!ok) return Invalid("UpdateReader", "Không tìm thấy độc giả cần cập nhật!");
+
+                _logger.LogInformation(BllLogEvents.ReaderUpdated,
+                    "Cập nhật độc giả thành công ReaderId={ReaderId}, ReaderCode={ReaderCode}",
+                    reader.ReaderId, reader.ReaderCode);
+                return OperationResult.Ok("Đã cập nhật thông tin độc giả.", reader.ReaderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(BllLogEvents.BusinessError, ex,
+                    "Cập nhật độc giả thất bại ReaderId={ReaderId}", reader.ReaderId);
+                return OperationResult.Fail("Không thể cập nhật độc giả do lỗi cơ sở dữ liệu.");
+            }
+        }
+
+        public OperationResult DeleteReader(int readerId)
+        {
+            if (readerId <= 0) return Invalid("DeleteReader", "Vui lòng chọn độc giả cần xóa!");
+
+            try
+            {
+                int active = _repo.CountActiveBorrows(readerId);
+                if (active > 0)
+                    return Invalid("DeleteReader",
+                        $"Không thể xóa: độc giả còn {active} cuốn sách chưa trả.");
+
+                bool ok = _repo.Delete(readerId);
+                if (!ok) return Invalid("DeleteReader", "Độc giả không tồn tại hoặc đã bị xóa.");
+
+                _logger.LogInformation(BllLogEvents.ReaderDeleted, "Xóa độc giả thành công ReaderId={ReaderId}", readerId);
+                return OperationResult.Ok("Đã xóa độc giả.", readerId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(BllLogEvents.BusinessError, ex, "Xóa độc giả thất bại ReaderId={ReaderId}", readerId);
+                return OperationResult.Fail("Không thể xóa độc giả do lỗi cơ sở dữ liệu.");
+            }
+        }
+
+        private string? ValidateCommon(ReaderDTO reader)
+        {
             if (!_validator.IsValidFullName(reader.FullName))
-                return (false, "Họ và tên độc giả không được để trống!", 0);
-
-            if (string.IsNullOrWhiteSpace(reader.Class))
-                return (false, "Lớp không được để trống!", 0);
-
+                return "Họ tên độc giả phải từ 2 đến 100 ký tự!";
+            if (!_validator.IsValidClass(reader.Class))
+                return "Lớp gồm 2–20 ký tự chữ/số (VD: CNTT01)!";
             if (!_validator.IsValidEmail(reader.Email))
-                return (false, "Địa chỉ Email không hợp lệ!", 0);
-
+                return "Địa chỉ Email không hợp lệ (VD: ten@sv.edu.vn)!";
             if (!_validator.IsValidPhoneNumber(reader.PhoneNumber))
-                return (false, "Số điện thoại phải từ 10 đến 11 chữ số!", 0);
-
-            try
-            {
-                int id = _readerDAL.Insert(reader);
-                return (true, "Thêm độc giả mới thành công!", id);
-            }
-            catch (Exception ex)
-            {
-                return (false, $"Lỗi thêm độc giả (có thể trùng Mã hoặc Email): {ex.Message}", 0);
-            }
+                return "Số điện thoại phải gồm 10–11 chữ số và bắt đầu bằng 0!";
+            return null;
         }
 
-        public (bool Success, string Message) UpdateReader(ReaderDTO reader)
+        private OperationResult Invalid(string action, string message)
         {
-            if (reader.ReaderId <= 0)
-                return (false, "Mã độc giả không hợp lệ!");
-
-            if (!_validator.IsValidFullName(reader.FullName))
-                return (false, "Họ tên độc giả không được rỗng!");
-
-            if (!_validator.IsValidEmail(reader.Email))
-                return (false, "Email không hợp lệ!");
-
-            try
-            {
-                bool ok = _readerDAL.Update(reader);
-                return ok ? (true, "Cập nhật thông tin độc giả thành công!") : (false, "Không tìm thấy độc giả để cập nhật!");
-            }
-            catch (Exception ex)
-            {
-                return (false, $"Lỗi cập nhật độc giả: {ex.Message}");
-            }
-        }
-
-        public (bool Success, string Message) DeleteReader(int readerId)
-        {
-            try
-            {
-                bool ok = _readerDAL.Delete(readerId);
-                return ok ? (true, "Xóa độc giả thành công!") : (false, "Không thể xóa độc giả!");
-            }
-            catch (Exception ex)
-            {
-                return (false, $"Lỗi xóa độc giả: {ex.Message}");
-            }
+            _logger.LogWarning(BllLogEvents.ValidationFailed, "{Action} bị từ chối: {Reason}", action, message);
+            return OperationResult.Fail(message);
         }
     }
 }

@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor TT as Thủ thư
+    participant P as BooksPage
+    participant E as frmBookEditor
+    participant S as BookService
+    participant V as BookValidator
+    participant D as BookDAL
+    participant DB as SQL Server
+    TT->>P: Nhấn "Thêm sách"
+    P->>E: ShowDialog()
+    TT->>E: Nhập thông tin, nhấn "Thêm sách"
+    E->>S: AddBook(bookDTO)
+    S->>V: IsValidTitle / Author / Category / PublishYear / Quantity
+    alt Dữ liệu không hợp lệ
+        V-->>S: false
+        S-->>E: Fail(thông báo lỗi) + LogWarning(1900)
+        E-->>TT: Hiện lỗi ngay trên form
+    else Hợp lệ
+        S->>D: Insert(bookDTO)
+        D->>DB: INSERT INTO Books ... + SELECT SCOPE_IDENTITY()
+        DB-->>D: BookId mới
+        D-->>S: BookId
+        S-->>E: Ok(BookId) + LogInformation(1001 BookInserted)
+        E-->>P: DialogResult.OK
+        P->>P: Nạp lại danh sách, chọn sách mới
+        P-->>TT: Toast "Đã thêm sách"
+    end

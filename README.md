@@ -1,68 +1,55 @@
-# HỆ THỐNG QUẢN LÝ THƯ VIỆN (LIBRARY MANAGEMENT SYSTEM)
-**Đồ án kết thúc học phần môn: Công cụ và Môi trường Phát triển Phần mềm**  
-**Giảng viên hướng dẫn:** ThS. Đặng Thế Hân  
+# 📚 Smart Library – Hệ thống Quản lý Thư viện
 
----
+Đồ án cuối kỳ **Công cụ và Môi trường Phát triển Phần mềm** – GVHD: ThS. Đặng Thế Hân
 
-## 1. Giới thiệu tổng quan
-Ứng dụng **Quản Lý Thư Viện** được xây dựng trên nền tảng **C# Windows Forms (.NET 8)**, áp dụng kiến trúc đa tầng (N-Tier Architecture), kết nối hệ quản trị cơ sở dữ liệu **Microsoft SQL Server**, tích hợp hệ thống ghi nhật ký chuẩn **Microsoft.Extensions.Logging** (ghi log theo ngày ra file text) và bộ kiểm thử tự động **MSTest**.
+C# .NET 8 · Windows Forms · SQL Server · ADO.NET · Microsoft.Extensions.Logging · MSTest · Git/GitHub
 
-## 2. Kiến trúc giải pháp (Solution Architecture)
-Solution bao gồm 5 dự án thành phần:
-- `LibraryManagement.UI`: Tầng giao diện người dùng Windows Forms (.NET 8).
-- `LibraryManagement.BLL`: Tầng xử lý nghiệp vụ, kiểm tra tính hợp lệ (Validation) và quy tắc mượn/trả sách.
-- `LibraryManagement.DAL`: Tầng truy xuất dữ liệu an toàn với `Microsoft.Data.SqlClient`, sử dụng Parameterized Queries và Transaction.
-- `LibraryManagement.DTO`: Tầng chứa các lớp mô hình dữ liệu (Data Transfer Objects).
-- `LibraryManagement.Tests`: Tầng kiểm thử đơn vị với MSTest kiểm thử các trường hợp dữ liệu biên (Boundary Value Testing).
+## Chức năng
+| Nhóm | Chi tiết |
+|---|---|
+| Đăng nhập | Mật khẩu băm SHA-256, khóa sau 5 lần sai |
+| Quản lý sách | Hiển thị, thêm, sửa, xóa, tìm theo **tên / tác giả / thể loại**, lọc thể loại |
+| Quản lý độc giả | Hiển thị, thêm, sửa, xóa, tìm; chặn trùng mã/email |
+| Mượn – trả | Tạo phiếu, lưu hạn trả, ghi nhận ngày trả, **không cho mượn khi hết sách**, cảnh báo quá hạn, tối đa 5 cuốn/độc giả |
+| Thống kê | Tổng đầu sách, số cuốn còn mượn được, số phiếu đang mượn/quá hạn, biểu đồ |
 
-## 3. Hướng dẫn thiết lập môi trường & Chạy ứng dụng
-
-### 3.1. Yêu cầu môi trường
-- .NET 8 SDK (phiên bản 8.0.xxx)
-- Visual Studio 2022 (với Workload *.NET Desktop Development*)
-- Microsoft SQL Server & SQL Server Management Studio (SSMS)
-
-### 3.2. Cài đặt Cơ sở dữ liệu
-1. Mở SSMS và kết nối đến SQL Server instance của bạn (`.` hoặc `localhost`).
-2. Mở file script `LibraryDB.sql` (được trích dẫn chi tiết trong Báo cáo cuối kỳ).
-3. Thực thi toàn bộ script để tạo Database `LibraryDB` và các bảng `Books`, `Readers`, `BorrowRecords` kèm dữ liệu mẫu.
-
-### 3.3. Cấu hình Chuỗi kết nối (Connection String)
-Chuỗi kết nối được thiết lập trong tầng DAL hoặc file cấu hình `appsettings.json`:
-```json
-{
-  "ConnectionStrings": {
-    "LibraryDB": "Server=.;Database=LibraryDB;Trusted_Connection=True;TrustServerCertificate=True;"
-  }
-}
+## Kiến trúc
+```
+LibraryManagement.UI     → WinForms: Forms/, Pages/, Controls/ (giao diện tự vẽ), Logging/
+LibraryManagement.BLL    → Services + Validators (chỉ phụ thuộc interface DAL)
+LibraryManagement.DAL    → ADO.NET: I*Repository + BookDAL/ReaderDAL/BorrowDAL/UserDAL
+LibraryManagement.DTO    → BookDTO, ReaderDTO, BorrowRecordDTO, UserDTO, DashboardStatsDTO
+LibraryManagement.Tests  → MSTest + Fake repositories (không cần SQL Server)
 ```
 
-### 3.4. Chạy ứng dụng và Chạy Unit Test
-- **Chạy ứng dụng bằng Visual Studio:** Nhấn `F5` (chế độ Debug) hoặc `Ctrl + F5` (chế độ Release).
-- **Chạy ứng dụng qua CLI:**
-  ```bash
-  dotnet run --project LibraryManagement.UI
-  ```
-- **Chạy toàn bộ Unit Tests:**
-  ```bash
-  dotnet test
-  ```
+## Cách chạy
+1. Mở **SSMS** → mở `LibraryDB.sql` → **Execute** (tạo CSDL + dữ liệu mẫu).
+2. Nếu không dùng LocalDB, sửa chuỗi kết nối trong `LibraryManagement.UI/appsettings.json`
+   (ví dụ `Server=.\\SQLEXPRESS;...`).
+3. Mở `LibraryManagement.slnx` (hoặc `.sln`) → Startup Project: `LibraryManagement.UI` → **Rebuild Solution** → **F5**.
+4. Đăng nhập: `admin / admin123` hoặc `thuthu / 123456`.
 
-## 4. Hệ thống Ghi nhật ký (Logging)
-- Log được ghi nhận đồng thời ra màn hình **Console** và file văn bản trong thư mục `Logs/LogData_ddMMyyyy.log`.
-- Định dạng mỗi dòng log:
-  ```text
-  [Timestamp] [LogLevel] [Category] [EventId - EventName] Message (kèm StackTrace nếu là Exception)
-  ```
-- Phân tầng ghi log (Category Filter):
-  - `LibraryManagement.UI`: Mức `Information`
-  - `LibraryManagement.BLL`: Mức `Information`
-  - `LibraryManagement.DAL`: Mức `Debug`
+Muốn xem log trực tiếp trên Console: chọn profile **“LibraryManagement.UI (kèm cửa sổ Console log)”** cạnh nút Run (chạy với `--console`).
 
-## 5. Quy trình Quản trị mã nguồn (Git Workflow)
-Dự án áp dụng mô hình **Feature Branch Workflow**:
-- Nhánh `main`: Bản release ổn định
-- Nhánh `feature-database-dal`: Xây dựng script SQL và tầng DAL
-- Nhánh `feature-bll-validation`: Xây dựng logic nghiệp vụ
-- Nhánh `feature-ui-forms`: Thiết kế giao diện WinForms
-- Nhánh `feature-logging-test`: Xây dựng File Logger và bộ Unit Test MSTest
+## Logging
+- Provider: SimpleConsole (có Scope) + Debug (Output của VS) + **FileLoggerProvider tự viết**.
+- File: `LibraryManagement.UI/bin/Debug/net8.0-windows/Logs/LogData_ddMMyyyy.log` (mỗi ngày một file, ghi nối tiếp).
+- Định dạng: `[Timestamp] [LEVEL] [Category] [EventId n Name] Message | Scope: User=… Session=…` + Stack Trace nếu có Exception.
+- Filter: UI ≥ Information · BLL ≥ Information · DAL ≥ Debug · Microsoft ≥ Warning.
+- Quy ước Level: Debug (thời gian truy vấn, commit/rollback) · Information (đăng nhập, CRUD, mượn/trả thành công) · Warning (dữ liệu sai, đăng nhập sai, từ chối mượn) · Error (lỗi CSDL kèm Exception) · Critical (không kết nối được CSDL lúc khởi động).
+- Không bao giờ ghi mật khẩu vào log (có Unit Test kiểm tra).
+
+## Unit Test
+- 106 Test Method (≈125 test case với DataRow) cho toàn bộ Validators và Services: Thêm/Sửa/Xóa/Tìm sách & độc giả, Mượn/Trả, Thống kê, Đăng nhập, có Boundary Value.
+- Chạy: **Test → Run All Tests** trong Visual Studio hoặc `dotnet test`.
+
+## Lỗi thường gặp
+| Lỗi | Cách xử lý |
+|---|---|
+| “The debug executable … does not exist” | Build đang lỗi → mở **Error List** (Build Only) xem lỗi thật |
+| Không kết nối được SQL Server | Chạy `LibraryDB.sql`; kiểm tra `appsettings.json`; với LocalDB: `sqllocaldb start MSSQLLocalDB` |
+| File .exe bị khóa (MSB3027) | Tắt `LibraryManagement.UI.exe` trong Task Manager rồi build lại |
+
+## Tài liệu
+- Báo cáo: `BAO_CAO_CUOI_KY_QUAN_LY_THU_VIEN.md`
+- Sơ đồ Use Case, ERD, kiến trúc, Sequence: `docs/diagrams/`

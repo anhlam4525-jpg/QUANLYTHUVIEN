@@ -1,0 +1,33 @@
+sequenceDiagram
+    autonumber
+    actor TT as Thủ thư
+    participant P as BorrowPage
+    participant S as BorrowService
+    participant BK as BookDAL / ReaderDAL
+    participant D as BorrowDAL
+    participant DB as SQL Server
+    TT->>P: Chọn độc giả, sách, hạn trả → "Tạo phiếu mượn"
+    P->>S: BorrowBook(readerId, bookId, dueDate, notes)
+    S->>S: Kiểm tra hạn trả (0–60 ngày)
+    S->>BK: GetById(reader), GetById(book)
+    BK-->>S: ReaderDTO, BookDTO
+    alt Hết sách / có phiếu quá hạn / đủ 5 cuốn / đang mượn cuốn này
+        S-->>P: Fail(lý do) + LogWarning(1203 BorrowRejected)
+        P-->>TT: Toast cảnh báo
+    else Hợp lệ
+        S->>D: CreateBorrowTicket(...)
+        D->>DB: BEGIN TRAN
+        D->>DB: SELECT Total-Borrowed FROM Books WITH (UPDLOCK)
+        alt Còn sách
+            D->>DB: INSERT BorrowRecords (Status = 'Đang mượn')
+            D->>DB: UPDATE Books SET BorrowedQuantity += 1
+            D->>DB: COMMIT
+            D-->>S: true, RecordId
+            S-->>P: Ok + LogInformation(1201 BorrowCreated)
+            P-->>TT: Toast "Đã tạo phiếu #..." và nạp lại danh sách
+        else Vừa hết (người khác mượn trước)
+            D->>DB: ROLLBACK
+            D-->>S: false, "Sách đã hết"
+            S-->>P: Fail
+        end
+    end

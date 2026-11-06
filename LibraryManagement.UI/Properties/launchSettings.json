@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "LibraryManagement.UI": {
+      "commandName": "Project"
+    },
+    "LibraryManagement.UI (kèm cửa sổ Console log)": {
+      "commandName": "Project",
+      "commandLineArgs": "--console"
+    }
+  }
+}
