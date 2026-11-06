@@ -1,0 +1,41 @@
+erDiagram
+    Users {
+        int UserId PK
+        varchar Username UK
+        char PasswordHash "SHA-256"
+        nvarchar FullName
+        nvarchar Role
+        bit IsActive
+        datetime CreatedAt
+    }
+    Readers {
+        int ReaderId PK "IDENTITY(1001,1)"
+        varchar ReaderCode UK
+        nvarchar FullName
+        varchar Class
+        varchar Email UK
+        varchar PhoneNumber "NULL"
+        datetime CreatedAt
+    }
+    Books {
+        int BookId PK "IDENTITY(5001,1)"
+        nvarchar Title
+        nvarchar Author
+        nvarchar Category
+        int PublishYear "CHECK 1900-2100"
+        int TotalQuantity "CHECK >= 0"
+        int BorrowedQuantity "CHECK <= Total"
+        datetime CreatedAt
+    }
+    BorrowRecords {
+        int RecordId PK
+        int ReaderId FK
+        int BookId FK
+        date BorrowDate
+        date DueDate "CHECK >= BorrowDate"
+        date ReturnDate "NULL"
+        nvarchar Status "Đang mượn | Đã trả"
+        nvarchar Notes
+    }
+    Readers ||--o{ BorrowRecords : "lập"
+    Books ||--o{ BorrowRecords : "được mượn trong"

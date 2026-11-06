@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor TT as Thủ thư
+    participant P as BorrowPage
+    participant C as frmConfirm
+    participant S as BorrowService
+    participant D as BorrowDAL
+    participant DB as SQL Server
+    TT->>P: Chọn phiếu "Đang mượn" → "Ghi nhận trả sách"
+    P->>C: Ask("Xác nhận trả ...")
+    alt Hủy
+        C-->>P: false
+    else Đồng ý
+        C-->>P: true
+        P->>S: ReturnBook(recordId)
+        S->>D: GetById(recordId)
+        alt Phiếu không tồn tại / đã trả
+            S-->>P: Fail
+        else Đang mượn
+            S->>D: ReturnBook(recordId)
+            D->>DB: BEGIN TRAN
+            D->>DB: SELECT BookId ... WITH (UPDLOCK)
+            D->>DB: UPDATE BorrowRecords SET ReturnDate = hôm nay, Status = 'Đã trả'
+            D->>DB: UPDATE Books SET BorrowedQuantity -= 1
+            D->>DB: COMMIT
+            D-->>S: true
+            S->>S: Tính số ngày trễ hạn
+            S-->>P: Ok("Đã ghi nhận ... trả trễ n ngày") + LogInformation(1202)
+            P-->>TT: Toast + cập nhật danh sách, huy hiệu quá hạn
+        end
+    end

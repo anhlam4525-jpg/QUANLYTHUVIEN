@@ -1,23 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MSTest" Version="4.0.2" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="MSTest" Version="4.0.2" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
-  </ItemGroup>
+	<ItemGroup>
+		<Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\LibraryManagement.BLL\LibraryManagement.BLL.csproj" />
-    <ProjectReference Include="..\LibraryManagement.DTO\LibraryManagement.DTO.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\LibraryManagement.BLL\LibraryManagement.BLL.csproj" />
+		<ProjectReference Include="..\LibraryManagement.DAL\LibraryManagement.DAL.csproj" />
+		<ProjectReference Include="..\LibraryManagement.DTO\LibraryManagement.DTO.csproj" />
+	</ItemGroup>
 
 </Project>

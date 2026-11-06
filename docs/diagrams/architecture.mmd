@@ -1,0 +1,25 @@
+flowchart TB
+    U["👤 Thủ thư"] --> UI
+    subgraph UI["LibraryManagement.UI  (WinForms .NET 8)"]
+        F1["frmLogin / frmMain<br/>Pages: Dashboard, Books, Readers, Borrow, Statistics"]
+        F2["Controls tự vẽ: Card, ModernButton, FieldBox, Charts, Toast"]
+        F3["Logging: AppLogging + FileLoggerProvider"]
+    end
+    subgraph BLL["LibraryManagement.BLL"]
+        B1["Services: Book, Reader, Borrow, Statistics, Auth"]
+        B2["Validators: Book, Reader, Borrow"]
+    end
+    subgraph DAL["LibraryManagement.DAL  (ADO.NET)"]
+        D1["Interfaces: IBookRepository, IReaderRepository,<br/>IBorrowRepository, IUserRepository"]
+        D2["BookDAL, ReaderDAL, BorrowDAL, UserDAL<br/>SqlConnection · SqlCommand · SqlDataReader · Transaction"]
+    end
+    DTO["LibraryManagement.DTO<br/>BookDTO, ReaderDTO, BorrowRecordDTO, UserDTO, DashboardStatsDTO"]
+    DB[("SQL Server<br/>LibraryDB")]
+    T["LibraryManagement.Tests (MSTest)<br/>Fake Repositories"]
+    UI --> BLL --> DAL --> DB
+    UI -.-> DTO
+    BLL -.-> DTO
+    DAL -.-> DTO
+    T --> BLL
+    T -. "giả lập" .-> D1
+    F3 -->|"Logs/LogData_ddMMyyyy.log"| LOG[("File log .txt")]

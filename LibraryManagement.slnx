@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="LibraryManagement.BLL/LibraryManagement.BLL.csproj" />
+  <Project Path="LibraryManagement.DAL/LibraryManagement.DAL.csproj" />
+  <Project Path="LibraryManagement.DTO/LibraryManagement.DTO.csproj" />
+  <Project Path="LibraryManagement.Tests/LibraryManagement.Tests.csproj" />
+  <Project Path="LibraryManagement.UI/LibraryManagement.UI.csproj" />
+</Solution>

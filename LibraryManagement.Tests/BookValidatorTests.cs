@@ -2,125 +2,100 @@ using LibraryManagement.BLL.Validators;
 
 namespace LibraryManagement.Tests
 {
+    /// <summary>Kiểm thử quy tắc dữ liệu Sách – có Boundary Value cho Năm xuất bản và Số lượng.</summary>
     [TestClass]
     public class BookValidatorTests
     {
         private BookValidator _validator = null!;
 
         [TestInitialize]
-        public void Setup()
-        {
-            _validator = new BookValidator();
-        }
+        public void Setup() => _validator = new BookValidator();
 
-        #region Kiểm thử giá trị biên (Boundary Value Analysis) cho Năm xuất bản (PublishYear: 1900 -> Năm hiện tại)
+        // ----- Boundary: Năm xuất bản 1900 → năm hiện tại -----
         [TestMethod]
-        public void IsValidPublishYear_YearIs1899_BelowBoundary_ReturnsFalse()
-        {
-            // Ngay dưới biên dưới (1900 - 1 = 1899)
-            bool result = _validator.IsValidPublishYear(1899);
-            Assert.IsFalse(result, "Năm 1899 nhỏ hơn mốc 1900 nên phải không hợp lệ.");
-        }
+        public void IsValidPublishYear_1899_BelowLowerBoundary_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidPublishYear(1899));
 
         [TestMethod]
-        public void IsValidPublishYear_YearIs1900_AtLowerBoundary_ReturnsTrue()
-        {
-            // Ngay tại biên dưới (1900)
-            bool result = _validator.IsValidPublishYear(1900);
-            Assert.IsTrue(result, "Năm 1900 là mốc biên dưới hợp lệ.");
-        }
+        public void IsValidPublishYear_1900_AtLowerBoundary_ReturnsTrue()
+            => Assert.IsTrue(_validator.IsValidPublishYear(1900));
+
+        [TestMethod]
+        public void IsValidPublishYear_1901_AboveLowerBoundary_ReturnsTrue()
+            => Assert.IsTrue(_validator.IsValidPublishYear(1901));
 
         [TestMethod]
         public void IsValidPublishYear_CurrentYear_AtUpperBoundary_ReturnsTrue()
-        {
-            // Ngay tại biên trên (Năm hiện tại)
-            int currentYear = DateTime.Now.Year;
-            bool result = _validator.IsValidPublishYear(currentYear);
-            Assert.IsTrue(result, "Năm xuất bản bằng năm hiện tại phải hợp lệ.");
-        }
+            => Assert.IsTrue(_validator.IsValidPublishYear(DateTime.Now.Year));
 
         [TestMethod]
-        public void IsValidPublishYear_FutureYear_AboveUpperBoundary_ReturnsFalse()
-        {
-            // Vượt quá biên trên (Năm hiện tại + 1)
-            int futureYear = DateTime.Now.Year + 1;
-            bool result = _validator.IsValidPublishYear(futureYear);
-            Assert.IsFalse(result, "Năm xuất bản trong tương lai không được phép.");
-        }
+        public void IsValidPublishYear_NextYear_AboveUpperBoundary_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidPublishYear(DateTime.Now.Year + 1));
+
+        // ----- Boundary: Số lượng 0 → 10000 -----
+        [TestMethod]
+        public void IsValidQuantity_MinusOne_BelowBoundary_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidQuantity(-1));
 
         [TestMethod]
-        public void IsValidPublishYear_ValidMidRangeYear_ReturnsTrue()
-        {
-            // Giá trị thông thường trong khoảng hợp lệ
-            bool result = _validator.IsValidPublishYear(2023);
-            Assert.IsTrue(result);
-        }
-        #endregion
-
-        #region Kiểm thử giá trị biên cho Số lượng sách (TotalQuantity >= 0)
-        [TestMethod]
-        public void IsValidQuantity_ZeroQuantity_AtBoundary_ReturnsTrue()
-        {
-            // Ngay tại biên 0
-            bool result = _validator.IsValidQuantity(0);
-            Assert.IsTrue(result, "Số lượng bằng 0 hợp lệ cho sách mới nhập chưa về hàng.");
-        }
+        public void IsValidQuantity_Zero_AtBoundary_ReturnsTrue()
+            => Assert.IsTrue(_validator.IsValidQuantity(0));
 
         [TestMethod]
-        public void IsValidQuantity_NegativeOne_BelowBoundary_ReturnsFalse()
-        {
-            // Dưới biên (-1)
-            bool result = _validator.IsValidQuantity(-1);
-            Assert.IsFalse(result, "Số lượng sách không được âm.");
-        }
+        public void IsValidQuantity_Max_AtUpperBoundary_ReturnsTrue()
+            => Assert.IsTrue(_validator.IsValidQuantity(BookValidator.MaxQuantity));
 
         [TestMethod]
-        public void IsValidQuantity_PositiveValue_ReturnsTrue()
-        {
-            bool result = _validator.IsValidQuantity(50);
-            Assert.IsTrue(result);
-        }
-        #endregion
-
-        #region Kiểm thử quy tắc Tên sách
-        [TestMethod]
-        public void IsValidTitle_EmptyString_ReturnsFalse()
-        {
-            bool result = _validator.IsValidTitle("");
-            Assert.IsFalse(result, "Tên sách rỗng phải không hợp lệ.");
-        }
+        public void IsValidQuantity_MaxPlusOne_AboveUpperBoundary_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidQuantity(BookValidator.MaxQuantity + 1));
 
         [TestMethod]
-        public void IsValidTitle_WhitespaceOnly_ReturnsFalse()
-        {
-            bool result = _validator.IsValidTitle("     ");
-            Assert.IsFalse(result, "Tên sách chỉ gồm khoảng trắng phải không hợp lệ.");
-        }
+        public void IsValidQuantityForUpdate_BelowBorrowed_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidQuantityForUpdate(newTotalQuantity: 2, borrowedQuantity: 3));
+
+        [TestMethod]
+        public void IsValidQuantityForUpdate_EqualBorrowed_ReturnsTrue()
+            => Assert.IsTrue(_validator.IsValidQuantityForUpdate(newTotalQuantity: 3, borrowedQuantity: 3));
+
+        // ----- Tên sách / Tác giả / Thể loại -----
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("   ")]
+        [DataRow("A")]
+        public void IsValidTitle_EmptyOrTooShort_ReturnsFalse(string title)
+            => Assert.IsFalse(_validator.IsValidTitle(title));
+
+        [TestMethod]
+        public void IsValidTitle_Null_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidTitle(null));
 
         [TestMethod]
         public void IsValidTitle_ValidName_ReturnsTrue()
-        {
-            bool result = _validator.IsValidTitle("Lập trình C# cơ bản");
-            Assert.IsTrue(result);
-        }
-        #endregion
+            => Assert.IsTrue(_validator.IsValidTitle("Lập trình C# cơ bản"));
 
-        #region Kiểm thử điều kiện Mượn sách (CanBorrow)
+        [TestMethod]
+        public void IsValidTitle_201Characters_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidTitle(new string('a', 201)));
+
+        [TestMethod]
+        public void IsValidAuthor_Empty_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidAuthor(" "));
+
+        [TestMethod]
+        public void IsValidCategory_AllKeyword_ReturnsFalse()
+            => Assert.IsFalse(_validator.IsValidCategory("Tất cả"));
+
+        [TestMethod]
+        public void IsValidCategory_Normal_ReturnsTrue()
+            => Assert.IsTrue(_validator.IsValidCategory("CNTT"));
+
+        // ----- Điều kiện cho mượn -----
         [TestMethod]
         public void CanBorrow_AvailableGreaterThanZero_ReturnsTrue()
-        {
-            // Tổng 10 cuốn, đã mượn 8 cuốn => còn 2 cuốn
-            bool canBorrow = _validator.CanBorrow(10, 8);
-            Assert.IsTrue(canBorrow, "Sách còn trong kho phải cho phép mượn.");
-        }
+            => Assert.IsTrue(_validator.CanBorrow(10, 8));
 
         [TestMethod]
-        public void CanBorrow_AvailableIsZero_OutOfStock_ReturnsFalse()
-        {
-            // Tổng 5 cuốn, đã mượn 5 cuốn => còn 0 cuốn
-            bool canBorrow = _validator.CanBorrow(5, 5);
-            Assert.IsFalse(canBorrow, "Sách đã hết bản cuốn trong kho không được cho mượn.");
-        }
-        #endregion
+        public void CanBorrow_OutOfStock_ReturnsFalse()
+            => Assert.IsFalse(_validator.CanBorrow(5, 5));
     }
 }
